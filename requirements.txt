@@ -7,4 +7,10 @@ scipy
 sqlalchemy
 mlxtend
 nltk
+Distance
+plotly
+beautifulsoup4
+fuzzywuzzy 
+pillow 
+wordcloud
 #-e .
