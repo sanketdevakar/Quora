@@ -13,4 +13,5 @@ beautifulsoup4
 fuzzywuzzy 
 pillow 
 wordcloud
+lxml
 #-e .
