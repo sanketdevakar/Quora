@@ -18,7 +18,7 @@ from src.utils import evaluate_model
 @dataclass
 class ModelTrainerConfig:
     trained_model_file_path = os.path.join("artifacts", "best_model.pkl")
-    max_train_size: int = 100000   # 🔹 configurable sample size
+    
 
 
 class ModelTrainer:
@@ -30,10 +30,10 @@ class ModelTrainer:
             
             
             logging.info("Loading transformed train and test data")
-            print("Loading Transformed and train data")
+            
             train_df = pd.read_csv(train_array)
             test_df = pd.read_csv(test_array)
-            print("seperating numeric features")
+            
             # Separate numeric features and target
             y_train = train_df["is_duplicate"].astype(int)
             y_test = test_df["is_duplicate"].astype(int)
@@ -42,7 +42,7 @@ class ModelTrainer:
 
             logging.info(f"Original Train shape: {X_train.shape}, Test shape: {X_test.shape}")
 
-            print("Oversampling minority class in training")
+            
             # --- Oversample minority class in training ---
             train_df_balanced = pd.concat([X_train, y_train], axis=1)
             df_majority = train_df_balanced[train_df_balanced.is_duplicate == 0]
@@ -57,7 +57,7 @@ class ModelTrainer:
 
             train_df_balanced = pd.concat([df_majority, df_minority_upsampled])
             train_df_balanced = train_df_balanced.sample(frac=1, random_state=42)  # shuffle
-            print("Preparing upsampled training data")
+            
             X_train = train_df_balanced.drop("is_duplicate", axis=1).values
             y_train = train_df_balanced["is_duplicate"].values
             X_test = X_test.values
@@ -69,7 +69,7 @@ class ModelTrainer:
             scaler = StandardScaler()
             X_train_scaled = scaler.fit_transform(X_train)
             X_test_scaled = scaler.transform(X_test)
-            print("Scaled the data")
+            
             # --- Compute XGBoost scale_pos_weight dynamically ---
             num_class_0 = sum(y_train == 0)
             num_class_1 = sum(y_train == 1)
@@ -125,7 +125,7 @@ class ModelTrainer:
                 # Evaluate
                 metrics = evaluate_model(y_test, y_pred, y_proba, plot_cm=False, plot_roc=False)
                 model_results[name] = metrics
-                print(f"Training is done on model {name}")
+                
                 # Choose best model by micro F1
                 if metrics["f1_micro"] > best_score:
                     best_score = metrics["f1_micro"]
