@@ -1,3 +1,6 @@
+from src.logger import logging
+import matplotlib.pyplot as plt
+import seaborn as sns
 import re
 from bs4 import BeautifulSoup
 from nltk.corpus import stopwords
@@ -6,6 +9,10 @@ import numpy as np
 import spacy
 from tqdm import tqdm
 import pandas as pd
+from sklearn.metrics import (
+    accuracy_score, f1_score, classification_report,
+    log_loss, confusion_matrix, roc_auc_score, roc_curve
+)
 
 STOP_WORDS = stopwords.words("english")
 nlp = spacy.load("en_core_web_lg")  # SpaCy large model
@@ -81,3 +88,77 @@ def expand_vector_columns(df, col_name_prefix):
     df = df.drop(columns=[col_name_prefix])
     df = pd.concat([df, vector_cols], axis=1)
     return df
+
+# ---------------- Evaluating Model and returning the results------------
+
+
+
+def evaluate_model(y_true, y_pred, y_proba=None, plot_cm=True, plot_roc=True):
+    """
+    Evaluate classification performance with multiple metrics.
+    
+    Parameters:
+    - y_true : ground truth labels
+    - y_pred : predicted labels
+    - y_proba : predicted probabilities (optional, for log_loss & ROC-AUC)
+    - plot_cm : whether to plot confusion matrix
+    - plot_roc : whether to plot ROC curve (binary classification only)
+    """
+    results = {
+        "accuracy": accuracy_score(y_true, y_pred),
+        "f1_macro": f1_score(y_true, y_pred, average="macro"),
+        "f1_micro": f1_score(y_true, y_pred, average="micro"),
+        "f1_weighted": f1_score(y_true, y_pred, average="weighted"),
+        "classification_report": classification_report(y_true, y_pred, digits=4)
+    }
+
+    if y_proba is not None:
+        results["log_loss"] = log_loss(y_true, y_proba)
+        # ROC-AUC (only works for binary/multiclass with proba)
+        try:
+            if y_proba.shape[1] == 2:  # binary classification
+                results["roc_auc"] = roc_auc_score(y_true, y_proba[:, 1])
+            else:  # multiclass
+                results["roc_auc_ovr"] = roc_auc_score(y_true, y_proba, multi_class="ovr")
+                results["roc_auc_ovo"] = roc_auc_score(y_true, y_proba, multi_class="ovo")
+        except Exception as e:
+            logging.warning(f"ROC-AUC could not be computed: {e}")
+
+    # Confusion Matrix
+    cm = confusion_matrix(y_true, y_pred)
+    results["confusion_matrix"] = cm
+
+    # Logging metrics
+    logging.info(f"Accuracy: {results['accuracy']:.4f}")
+    logging.info(f"Macro F1 Score: {results['f1_macro']:.4f}")
+    logging.info(f"Micro F1 Score: {results['f1_micro']:.4f}")
+    logging.info(f"Weighted F1 Score: {results['f1_weighted']:.4f}")
+    if "log_loss" in results:
+        logging.info(f"Log Loss: {results['log_loss']:.4f}")
+    if "roc_auc" in results:
+        logging.info(f"ROC-AUC: {results['roc_auc']:.4f}")
+    logging.info(f"\nClassification Report:\n{results['classification_report']}")
+
+    # Plot confusion matrix
+    if plot_cm:
+        plt.figure(figsize=(6, 5))
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=[0, 1], yticklabels=[0, 1])
+        plt.xlabel("Predicted")
+        plt.ylabel("True")
+        plt.title("Confusion Matrix")
+        plt.show()
+
+    # Plot ROC curve (only binary)
+    if plot_roc and y_proba is not None and y_proba.shape[1] == 2:
+        fpr, tpr, _ = roc_curve(y_true, y_proba[:, 1])
+        plt.figure(figsize=(6, 5))
+        plt.plot(fpr, tpr, label=f"ROC Curve (AUC = {results['roc_auc']:.4f})")
+        plt.plot([0, 1], [0, 1], "k--")
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate")
+        plt.title("ROC Curve")
+        plt.legend(loc="lower right")
+        plt.show()
+
+    return results
+

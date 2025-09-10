@@ -14,4 +14,5 @@ fuzzywuzzy
 pillow 
 wordcloud
 lxml
+xgboost
 #-e .
